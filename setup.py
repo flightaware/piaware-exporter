@@ -10,6 +10,7 @@ setup(
     license="MIT",
     packages=["piaware_exporter"],
     install_requires=[
-        "prometheus-client"
+        "prometheus-client",
+        "requests"
     ]
 )
