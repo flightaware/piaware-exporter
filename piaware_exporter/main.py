@@ -15,10 +15,10 @@ class PiAwareMetricsExporter():
         self.fetch_interval = fetch_interval
 
         # Prometheus metrics to collect and expose
-        self.radio_state = Enum('piaware_radio_state', 'Radio Status', states=['up', 'down'])
-        self.piaware_state = Enum('piaware_service_state', 'PiAware Service Status', states=['up', 'down'])
-        self.flightaware_connection_state = Enum('piaware_connect_to_flightaware_state', 'FlightAware Connection Status', states=['up', 'down'])
-        self.mlat_state = Enum('piaware_mlat_state', 'MLAT Status', states=['up', 'down'])
+        self.radio_state = Enum('piaware_radio_state', 'Radio Status', states=['green', 'amber', 'red'])
+        self.piaware_state = Enum('piaware_service_state', 'PiAware Service Status', states=['green', 'amber', 'red'])
+        self.flightaware_connection_state = Enum('piaware_connect_to_flightaware_state', 'FlightAware Connection Status', states=['green', 'amber', 'red'])
+        self.mlat_state = Enum('piaware_mlat_state', 'MLAT Status', states=['green', 'amber', 'red'])
         self.piaware_version = Gauge('piaware_version_info', 'PiAware Software Version', labelnames=['version'])
 
     def start_fetch_loop(self):
@@ -33,13 +33,63 @@ class PiAwareMetricsExporter():
         ''' Fetch piaware status.json and update Prometheus metric
 
         '''
-        r = requests.get(url=f'http://localhost:{self.piaware_status_port}/status.json')
+        response = requests.get(url=f'http://192.168.0.122:{self.piaware_status_port}/status.json')
+        if response.status_code != 200:
+            # Error reading piaware status.json
+            self.piaware_state.state("red")
+            self.flightaware_connection_state.state("red")
+            self.mlat_state.state("red")
+            self.radio_state.state("red")
+            return
         
-        request_json = r.json()
+        request_json = response.json()
+
+        piaware = request_json.get("piaware")
+        flightaware_connection = request_json.get("adept")
+        mlat = request_json.get("mlat")
+        radio = request_json.get("radio")
+
+        if piaware:
+            status = piaware.get("status")
+            if status == "green":
+                self.piaware_state.state("green")
+            elif status == "amber":
+                self.piaware_state.state("amber")
+            else:
+                self.piaware_state.state("red")
+
+
+        if flightaware_connection:
+            status = flightaware_connection.get("status")
+            if status == "green":
+                self.flightaware_connection_state.state("green")
+            elif status == "amber":
+                self.flightaware_connection_state.state("amber")
+            else:
+                self.flightaware_connection_state.state("red")
+
+
+        if mlat:
+            status = mlat.get("status")
+            if status == "green":
+                self.mlat_state.state("green")
+            elif status == "amber":
+                self.mlat_state.state("amber")
+            else:
+                self.mlat_state.state("red")
+
+
+        if radio:
+            status = radio.get("status")
+            if status == "green":
+                self.radio_state.state("green")
+            elif status == "amber":
+                self.radio_state.state("amber")
+            else:
+                self.radio_state.state("red")
 
 
 def main():
-
     # Create PiAwareMetrics object
     piaware_exporter = PiAwareMetricsExporter()
 
