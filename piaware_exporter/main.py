@@ -15,10 +15,10 @@ class PiAwareMetricsExporter():
         self.fetch_interval = fetch_interval
 
         # Prometheus metrics to collect and expose
-        self.radio_state = Enum('piaware_radio_state', 'Radio Status', states=['green', 'amber', 'red'])
-        self.piaware_state = Enum('piaware_service_state', 'PiAware Service Status', states=['green', 'amber', 'red'])
-        self.flightaware_connection_state = Enum('piaware_connect_to_flightaware_state', 'FlightAware Connection Status', states=['green', 'amber', 'red'])
-        self.mlat_state = Enum('piaware_mlat_state', 'MLAT Status', states=['green', 'amber', 'red'])
+        self.radio_state = Enum('piaware_radio_state', 'Radio Status', states=['green', 'amber', 'red', 'N/A'])
+        self.piaware_state = Enum('piaware_service_state', 'PiAware Service Status', states=['green', 'amber', 'red', 'N/A'])
+        self.flightaware_connection_state = Enum('piaware_connect_to_flightaware_state', 'FlightAware Connection Status', states=['green', 'amber', 'red', 'N/A'])
+        self.mlat_state = Enum('piaware_mlat_state', 'MLAT Status', states=['green', 'amber', 'red', 'N/A'])
         self.piaware_version = Gauge('piaware_version_info', 'PiAware Software Version', labelnames=['version'])
 
     def start_fetch_loop(self):
@@ -36,10 +36,10 @@ class PiAwareMetricsExporter():
         response = requests.get(url=f'http://192.168.0.122:{self.piaware_status_port}/status.json')
         if response.status_code != 200:
             # Error reading piaware status.json
-            self.piaware_state.state("red")
-            self.flightaware_connection_state.state("red")
-            self.mlat_state.state("red")
-            self.radio_state.state("red")
+            self.piaware_state.state("N/A")
+            self.flightaware_connection_state.state("N/A")
+            self.mlat_state.state("N/A")
+            self.radio_state.state("N/A")
             return
         
         request_json = response.json()
