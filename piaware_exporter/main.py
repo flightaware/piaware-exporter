@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
-from enum import Enum
+import argparse
 import requests
 import time
+import signal
+import sys
 from prometheus_client import start_http_server, Enum, Counter, Gauge
 
 
@@ -10,8 +12,8 @@ class PiAwareMetricsExporter():
     ''' Fetches status from PiAware, generates Prometheus metrics with that data, and 
         exports them to an endpoint.
     '''
-    def __init__(self, piaware_status_port=8080, fetch_interval=15):
-        self.piaware_status_port = piaware_status_port
+    def __init__(self, host, port, fetch_interval=15):
+        self.piaware_status_url = f"http://{host}:{port}"
         self.fetch_interval = fetch_interval
 
         # Prometheus metrics to collect and expose
@@ -33,7 +35,15 @@ class PiAwareMetricsExporter():
         ''' Fetch piaware status.json and update Prometheus metric
 
         '''
-        response = requests.get(url=f'http://192.168.0.122:{self.piaware_status_port}/status.json')
+        try:
+            response = requests.get(url=f'{self.piaware_status_url}/status.json')
+        except requests.exceptions.ConnectionError:
+            print (f"Could not connect to {self.piaware_status_url}")
+            return
+        except requests.exceptions.Timeout:
+            print (f"Timeout Error requesting {self.piaware_status_url}")
+            return
+
         if response.status_code != 200:
             # Error reading piaware status.json
             self.piaware_state.state("N/A")
@@ -88,13 +98,49 @@ class PiAwareMetricsExporter():
             else:
                 self.radio_state.state("red")
 
+def getArgs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--piaware_host",
+        help="Host IP address to connect to for piaware status JSON",
+        default="localhost"
+        )
+
+    parser.add_argument(
+        "--piaware_port",
+        help="Host Port to connect to for piaware status JSON",
+        default="8080"
+        )
+
+    parser.add_argument(
+        "--expo_port",
+        help="Local port to export PiAware metrics on",
+        default="9101", type=int
+        )
+
+    args = parser.parse_args()
+
+    return args
+
+def signal_handler(signal, frame):
+    print ('piaware_exporter shutting down.')
+    sys.exit(0)
+
 
 def main():
-    # Create PiAwareMetrics object
-    piaware_exporter = PiAwareMetricsExporter()
+    print('PiAware Prometheus Exporter starting.')
+    # Get program args
+    args = getArgs()
 
-    # Bring up endpoint to expose the Prometheus metrics
-    start_http_server(9101)
+    # Create PiAwareMetrics object that reads and exports status information
+    piaware_exporter = PiAwareMetricsExporter(args.piaware_host, args.piaware_port)
+
+    # Bring up endpoint to expose the Prometheus metrics on
+    start_http_server(args.expo_port)
+
+    # Set up signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
     # Start fetching
     piaware_exporter.start_fetch_loop()
