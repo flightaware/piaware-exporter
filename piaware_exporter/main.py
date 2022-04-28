@@ -1,3 +1,9 @@
+
+'''
+This script reads piaware status information obtained from piaware status.json
+and exposes them to Prometheus for monitoring and visualization.
+'''
+
 #!/usr/bin/python3
 
 import argparse
@@ -17,7 +23,7 @@ def getArgs():
 
     parser.add_argument(
         "--piaware_port",
-        help="Host Port to connect to for piaware status JSON",
+        help="Host port to connect to for piaware status JSON",
         default="8080"
         )
 
@@ -44,7 +50,11 @@ def main():
     piaware_exporter = PiAwareMetricsExporter(args.piaware_host, args.piaware_port)
 
     # Bring up endpoint to expose the Prometheus metrics on
-    start_http_server(args.expo_port)
+    try:
+        start_http_server(args.expo_port)
+    except Exception as e:
+        print(f'Could not start endpoint on port {args.expo_port}: {e}')
+        sys.exit(1)
 
     # Set up signal handlers
     signal.signal(signal.SIGINT, signal_handler)

@@ -1,4 +1,3 @@
-
 from prometheus_client import Enum, Counter, Gauge
 import requests
 import time
