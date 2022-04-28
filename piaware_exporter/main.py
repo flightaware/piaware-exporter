@@ -32,7 +32,7 @@ def getArgs():
     return args
 
 def signal_handler(signal, frame):
-    print ('piaware_exporter shutting down.')
+    print ('PiAware Prometheus Exporter shutting down.')
     sys.exit(0)
 
 def main():

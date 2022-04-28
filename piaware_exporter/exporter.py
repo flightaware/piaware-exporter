@@ -16,7 +16,6 @@ class PiAwareMetricsExporter():
         self.piaware_state = Enum('piaware_service_state', 'PiAware Service Status', states=['green', 'amber', 'red', 'N/A'])
         self.flightaware_connection_state = Enum('piaware_connect_to_flightaware_state', 'FlightAware Connection Status', states=['green', 'amber', 'red', 'N/A'])
         self.mlat_state = Enum('piaware_mlat_state', 'MLAT Status', states=['green', 'amber', 'red', 'N/A'])
-        self.piaware_version = Gauge('piaware_version_info', 'PiAware Software Version', labelnames=['version'])
 
     def start_fetch_loop(self):
         ''' Main loop to do periodic fetches of piaware status.json
@@ -37,6 +36,9 @@ class PiAwareMetricsExporter():
             return
         except requests.exceptions.Timeout:
             print (f"Timeout Error requesting {self.piaware_status_url}")
+            return
+        except Exception as e:
+            print(f"Error reading piaware status.json: {e}")
             return
 
         if response.status_code != 200:
