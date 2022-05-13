@@ -1,12 +1,15 @@
+import logging
 from prometheus_client import Enum, Counter, Gauge
 import requests
 import time
+
+logger = logging.getLogger()
 
 class PiAwareMetricsExporter():
     ''' Fetches status from PiAware, generates Prometheus metrics with that data, and 
         exports them to an endpoint.
     '''
-    def __init__(self, host, port, fetch_interval=15):
+    def __init__(self, host, port, fetch_interval):
         self.piaware_status_url = f"http://{host}:{port}"
         self.fetch_interval = fetch_interval
 
@@ -29,25 +32,29 @@ class PiAwareMetricsExporter():
 
         '''
         try:
-            response = requests.get(url=f'{self.piaware_status_url}/status.json')
+            piaware_status_url = f'{self.piaware_status_url}/status.json'
+            response = requests.get(url=piaware_status_url)
         except requests.exceptions.ConnectionError:
-            print (f"Could not connect to {self.piaware_status_url}")
+            logger.error(f"Could not connect to {self.piaware_status_url}")
             return
         except requests.exceptions.Timeout:
-            print (f"Timeout Error requesting {self.piaware_status_url}")
+            logger.error(f"Timeout Error requesting {self.piaware_status_url}")
             return
         except Exception as e:
-            print(f"Error reading piaware status.json: {e}")
+            logger.error(f"Error reading piaware status.json: {e}")
             return
 
-        if response.status_code != 200:
-            # Error reading piaware status.json
+        if 200 < response.status_code >= 300 :
+            # Non 200 response code received reading piaware status.json
+            logger.error(f'GET {piaware_status_url} - Response: {response.status_code} - ERROR')
             self.piaware_state.state("N/A")
             self.flightaware_connection_state.state("N/A")
             self.mlat_state.state("N/A")
             self.radio_state.state("N/A")
             return
-        
+
+        logger.info(f'GET {piaware_status_url} - Response: {response.status_code} - OK')
+
         request_json = response.json()
 
         piaware = request_json.get("piaware")

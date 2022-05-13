@@ -7,11 +7,15 @@ and exposes them to Prometheus for monitoring and visualization.
 #!/usr/bin/python3
 
 import argparse
+import logging
 from prometheus_client import start_http_server
 import signal
 import sys
-
 from exporter import PiAwareMetricsExporter
+
+# Configure logging
+logging.basicConfig(format='%(asctime)s - %(module)s - %(message)s', datefmt='%b %d %Y %H:%M:%S', level=logging.INFO)
+logger = logging.getLogger()
 
 def getArgs():
     parser = argparse.ArgumentParser()
@@ -30,30 +34,40 @@ def getArgs():
     parser.add_argument(
         "--expo_port",
         help="Local port to export PiAware metrics on",
-        default="9101", type=int
+        default="9101",
+        type=int
         )
+
+    parser.add_argument(
+        "--fetch_interval",
+        help="Interval to read piaware status",
+        default=15,
+        type=int
+    )
 
     args = parser.parse_args()
 
     return args
 
 def signal_handler(signal, frame):
-    print ('PiAware Prometheus Exporter shutting down.')
+    logger.info('PiAware Prometheus Exporter shutting down.')
     sys.exit(0)
 
 def main():
-    print('PiAware Prometheus Exporter starting.')
+    logger.info('PiAware Prometheus Exporter starting.')
     # Get program args
     args = getArgs()
 
+
     # Create PiAwareMetrics object that reads and exports status information
-    piaware_exporter = PiAwareMetricsExporter(args.piaware_host, args.piaware_port)
+    piaware_exporter = PiAwareMetricsExporter(args.piaware_host, args.piaware_port, args.fetch_interval)
 
     # Bring up endpoint to expose the Prometheus metrics on
     try:
         start_http_server(args.expo_port)
+        logger.info(f'Started Prometheus server endpoint on port {args.expo_port}')
     except Exception as e:
-        print(f'Could not start endpoint on port {args.expo_port}: {e}')
+        logger.error(f'Could not start Prometheus server endpoint on port {args.expo_port}: {e}')
         sys.exit(1)
 
     # Set up signal handlers
